@@ -1,0 +1,72 @@
+{
+  "Comment": "State Machine",
+  "StartAt": "ExtractImageMetaData",
+  "States": {
+    "ExtractImageMetaData": {
+      "Type": "Task",
+      "Resource": "${ExtractImageMetaDataTask.Arn}",
+      "Next": "ImageTypeCheck"
+    },
+    "ImageTypeCheck": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.ImageSupported",
+          "BooleanEquals": true,
+          "Next": "StoreImageMetaData"
+        }
+      ],
+      "Default": "DefaultState"
+    },
+    "StoreImageMetaData": {
+      "Type": "Task",
+      "Resource": "${StoreImageMetaDataTask.Arn}",
+      "Next": "StoreTagsAndThumb"
+    },
+    "StoreTagsAndThumb": {
+      "Type": "Parallel",
+      "End": true,
+      "Branches": [
+        {
+          "StartAt": "GenerateTagsAsync",
+          "States": {
+            "GenerateTagsAsync": {
+              "Type": "Task",
+              "Resource": "${GenerateTagsAsyncTask.Arn}",
+              "Next": "AddTagsAsync"
+            },
+            "AddTagsAsync": {
+              "Type": "Task",
+              "Resource": "${AddTagsAsyncTask.Arn}",
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "GenerateThumbnail",
+          "States": {
+            "GenerateThumbnail": {
+              "Type": "Task",
+              "Resource": "${GenerateThumbnailTask.Arn}",
+              "Next": "WaitFiveSeconds"
+            },
+            "WaitFiveSeconds": {
+              "Type": "Wait",
+              "Seconds": 5,
+              "Next": "StoreThumbnail"
+            },
+            "StoreThumbnail": {
+              "Type": "Task",
+              "Resource": "${StoreThumbnailTask.Arn}",
+              "End": true
+            }
+          }
+        }
+      ]
+    },
+    "DefaultState": {
+      "Type": "Fail",
+      "Cause": "Format not Supported!"
+    }
+  }
+}
